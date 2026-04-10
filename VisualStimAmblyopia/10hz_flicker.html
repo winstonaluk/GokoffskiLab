@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SSVEP 10 Hz Stimulus</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  #flash-overlay {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  #progress-track {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    z-index: 20;
+    display: none;
+  }
+
+  #progress-bar {
+    height: 100%;
+    width: 0%;
+    background: #F5C400;
+  }
+
+  #ui-setup {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    padding: 40px;
+  }
+
+  #ui-done {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 40px;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: #fff;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 280px;
+  }
+
+  .metric {
+    background: rgba(255,255,255,0.08);
+    border: 0.5px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: left;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .metric-value {
+    font-size: 20px;
+    font-weight: 500;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  button {
+    background: transparent;
+    border: 0.5px solid rgba(255,255,255,0.35);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 12px 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:active { background: rgba(255,255,255,0.1); }
+  button:disabled { opacity: 0.3; cursor: default; }
+
+  #btn-export {
+    font-size: 13px;
+    padding: 9px 24px;
+    color: rgba(255,255,255,0.6);
+    border-color: rgba(255,255,255,0.2);
+  }
+
+  #status-msg {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+  }
+</style>
+</head>
+<body>
+
+<div id="flash-overlay"></div>
+
+<div id="progress-track">
+  <div id="progress-bar"></div>
+</div>
+
+<div id="ui-setup">
+  <h1>SSVEP Stimulus</h1>
+
+  <div class="info-grid">
+    <div class="metric">
+      <div class="metric-label">Frequency</div>
+      <div class="metric-value">10 Hz</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Duration</div>
+      <div class="metric-value">30 min</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Blocks</div>
+      <div class="metric-value">10 × 1 min</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Rest</div>
+      <div class="metric-value">1 min each</div>
+    </div>
+  </div>
+
+  <button id="btn-start" onclick="startProtocol()">Start</button>
+  <div id="status-msg">5 min baseline · 20 min stimulus · 5 min recovery</div>
+</div>
+
+<div id="ui-done">
+  <h1>Session complete</h1>
+  <button id="btn-export" onclick="exportCSV()">Export CSV</button>
+</div>
+
+<script>
+const TOTAL_SEC = 30 * 60;
+const PHASE_DEFS = [
+  { name: 'Baseline', type: 'black', dur: 5 * 60 },
+  ...Array.from({ length: 10 }, (_, i) => ([
+    { name: `Block ${i + 1} ON`,  type: 'flicker', dur: 60 },
+    { name: `Block ${i + 1} OFF`, type: 'black',   dur: 60 },
+  ])).flat(),
+  { name: 'Recovery', type: 'black', dur: 5 * 60 },
+];
+
+let events = [];
+let phaseIdx = 0;
+let phaseStartTime = 0;
+let sessionStartTime = 0;
+let running = false;
+let animId = null;
+let flickerFrameId = null;
+let frameCount = 0;
+let flickering = false;
+
+const overlay       = document.getElementById('flash-overlay');
+const progressBar   = document.getElementById('progress-bar');
+const progressTrack = document.getElementById('progress-track');
+const uiSetup       = document.getElementById('ui-setup');
+const uiDone        = document.getElementById('ui-done');
+
+function logEvent(type, phaseName) {
+  const elapsed = (performance.now() - sessionStartTime) / 1000;
+  events.push({ timestamp_s: elapsed.toFixed(3), event: type, phase: phaseName });
+}
+
+function stopFlicker() {
+  if (flickerFrameId) { cancelAnimationFrame(flickerFrameId); flickerFrameId = null; }
+  overlay.style.background = '#000';
+  flickering = false;
+}
+
+function startFlicker() {
+  if (flickering) return;
+  flickering = true;
+  frameCount = 0;
+  const framesPerHalf = Math.round(60 / (10 * 2));
+  function flick() {
+    frameCount++;
+    overlay.style.background = Math.floor(frameCount / framesPerHalf) % 2 === 0 ? '#fff' : '#000';
+    flickerFrameId = requestAnimationFrame(flick);
+  }
+  flickerFrameId = requestAnimationFrame(flick);
+}
+
+function enterPhase(idx) {
+  if (idx >= PHASE_DEFS.length) { endSession(); return; }
+  phaseIdx = idx;
+  phaseStartTime = performance.now();
+  const phase = PHASE_DEFS[idx];
+  logEvent('phase_start', phase.name);
+  if (phase.type === 'flicker') { startFlicker(); } else { stopFlicker(); }
+}
+
+function tick() {
+  if (!running) return;
+  const now = performance.now();
+  const totalElapsed = (now - sessionStartTime) / 1000;
+  const phaseElapsed = (now - phaseStartTime) / 1000;
+
+  progressBar.style.width = `${Math.min(100, (totalElapsed / TOTAL_SEC) * 100).toFixed(3)}%`;
+
+  if (phaseElapsed >= PHASE_DEFS[phaseIdx].dur) {
+    logEvent('phase_end', PHASE_DEFS[phaseIdx].name);
+    enterPhase(phaseIdx + 1);
+  }
+
+  animId = requestAnimationFrame(tick);
+}
+
+function startProtocol() {
+  sessionStartTime = performance.now();
+  running = true;
+  events = [];
+  logEvent('session_start', 'session');
+  uiSetup.style.display = 'none';
+  progressTrack.style.display = 'block';
+  enterPhase(0);
+  animId = requestAnimationFrame(tick);
+}
+
+function endSession() {
+  running = false;
+  stopFlicker();
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  logEvent('session_end', 'session');
+  progressBar.style.width = '100%';
+  overlay.style.background = '#000';
+  uiDone.style.display = 'flex';
+}
+
+function exportCSV() {
+  const header = 'timestamp_s,event,phase\n';
+  const rows = events.map(e => `${e.timestamp_s},${e.event},"${e.phase}"`).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const now = new Date();
+  const stamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+  a.download = `ssvep_events_${stamp}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && running) console.warn('Tab backgrounded — timing may drift');
+});
+</script>
+</body>
+</html>
