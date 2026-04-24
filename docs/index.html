@@ -3,14 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>SSVEP 10 Hz Stimulus</title>
+<title>Rat Visual Stimulus</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  :root {
+    --bg: #0a0a0a;
+    --surface: rgba(255,255,255,0.055);
+    --border: rgba(255,255,255,0.10);
+    --text: #e8e8e8;
+    --muted: rgba(255,255,255,0.35);
+    --accent: #c8f060;
+    --accent-dim: rgba(200,240,96,0.15);
+    --danger: #ff5f5f;
+    --font-mono: 'SF Mono', 'Fira Mono', 'Consolas', monospace;
+  }
+
   body {
-    background: #000;
-    color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
     height: 100vh;
     display: flex;
     align-items: center;
@@ -18,207 +30,588 @@
     overflow: hidden;
   }
 
+  /* ── stimulus layers ── */
   #flash-overlay {
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background: #000;
     z-index: 0;
     pointer-events: none;
   }
 
-  #progress-track {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 6px;
-    background: rgba(255,255,255,0.08);
-    z-index: 20;
+  #grating-canvas {
+    position: fixed; inset: 0;
+    z-index: 0;
+    pointer-events: none;
     display: none;
   }
 
+  /* ── progress bar ── */
+  #progress-track {
+    position: fixed; bottom: 0; left: 0;
+    width: 100%; height: 3px;
+    background: rgba(255,255,255,0.06);
+    z-index: 20; display: none;
+  }
   #progress-bar {
-    height: 100%;
-    width: 0%;
-    background: #F5C400;
+    height: 100%; width: 0%;
+    background: var(--accent);
+    transition: width 0.25s linear;
   }
 
+  /* ── phase label ── */
+  #phase-label {
+    position: fixed; top: 18px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px; letter-spacing: 0.12em;
+    color: var(--muted); text-transform: uppercase;
+    z-index: 20; display: none;
+    background: rgba(0,0,0,0.5);
+    padding: 4px 12px; border-radius: 20px;
+    border: 0.5px solid var(--border);
+  }
+
+  /* ── setup UI ── */
   #ui-setup {
-    position: relative;
-    z-index: 10;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 28px;
-    padding: 40px;
+    position: relative; z-index: 10;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 22px;
+    padding: 36px 28px;
+    background: rgba(10,10,10,0.92);
+    border: 0.5px solid var(--border);
+    border-radius: 14px;
+    width: 340px;
+    backdrop-filter: blur(10px);
   }
 
   #ui-done {
-    position: relative;
-    z-index: 10;
-    text-align: center;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
+    position: relative; z-index: 10;
+    display: none; flex-direction: column;
+    align-items: center; gap: 16px;
     padding: 40px;
   }
 
-  h1 {
-    font-size: 22px;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    color: #fff;
+  /* ── title ── */
+  .panel-title {
+    font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted);
+    width: 100%; border-bottom: 0.5px solid var(--border);
+    padding-bottom: 12px;
   }
 
-  .info-grid {
+  /* ── mode toggle ── */
+  .seg-control {
+    display: flex; width: 100%;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 7px; overflow: hidden;
+  }
+  .seg-control input { display: none; }
+  .seg-control label {
+    flex: 1; text-align: center;
+    padding: 9px 0; font-size: 12px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .seg-control input:checked + label {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  /* ── param grid ── */
+  .param-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    width: 280px;
+    gap: 10px; width: 100%;
   }
 
-  .metric {
-    background: rgba(255,255,255,0.08);
-    border: 0.5px solid rgba(255,255,255,0.15);
-    border-radius: 10px;
-    padding: 14px 16px;
-    text-align: left;
+  .param {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 13px;
+  }
+  .param.full { grid-column: 1 / -1; }
+  .param.highlight { border-color: rgba(200,240,96,0.25); background: var(--accent-dim); }
+
+  .param-label {
+    font-size: 9px; letter-spacing: 0.10em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .param-value {
+    font-size: 18px; font-weight: 500;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .param-value.accent { color: var(--accent); }
+  .param-sub {
+    font-size: 10px; color: var(--muted);
+    margin-top: 2px;
   }
 
-  .metric-label {
-    font-size: 11px;
-    color: rgba(255,255,255,0.45);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 4px;
+  /* ── SF slider ── */
+  .slider-row {
+    display: flex; flex-direction: column;
+    gap: 8px; width: 100%;
   }
-
-  .metric-value {
-    font-size: 20px;
-    font-weight: 500;
-    color: #fff;
+  .slider-header {
+    display: flex; justify-content: space-between;
+    align-items: baseline;
+  }
+  .slider-label {
+    font-size: 9px; letter-spacing: 0.10em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .slider-readout {
+    font-size: 14px; color: var(--accent);
     font-variant-numeric: tabular-nums;
   }
 
-  button {
-    background: transparent;
-    border: 0.5px solid rgba(255,255,255,0.35);
-    color: #fff;
-    font-size: 15px;
-    font-weight: 500;
-    padding: 12px 40px;
-    border-radius: 8px;
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%; height: 3px;
+    background: var(--border);
+    border-radius: 2px; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
     cursor: pointer;
-    letter-spacing: 0.04em;
+    border: 2px solid var(--bg);
+  }
+
+  /* ── SF presets ── */
+  .preset-row {
+    display: flex; gap: 6px; width: 100%;
+  }
+  .preset-btn {
+    flex: 1; padding: 7px 0;
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.04em;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted); cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+  }
+  .preset-btn.active {
+    background: var(--accent-dim);
+    border-color: rgba(200,240,96,0.3);
+    color: var(--accent);
+  }
+
+  /* ── warning ── */
+  .warning {
+    display: none; width: 100%;
+    background: rgba(255,95,95,0.08);
+    border: 0.5px solid rgba(255,95,95,0.25);
+    border-radius: 7px; padding: 9px 12px;
+    font-size: 10px; color: var(--danger);
+    letter-spacing: 0.04em; line-height: 1.5;
+  }
+  .warning.show { display: block; }
+
+  /* ── buttons ── */
+  .btn-primary {
+    width: 100%;
+    background: transparent;
+    border: 0.5px solid rgba(200,240,96,0.4);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 12px; letter-spacing: 0.10em;
+    text-transform: uppercase;
+    padding: 13px 0; border-radius: 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s;
+  }
+  .btn-primary:active { background: var(--accent-dim); }
+  .btn-primary:disabled { opacity: 0.3; cursor: default; }
+
+  .btn-secondary {
+    background: transparent;
+    border: 0.5px solid var(--border);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.06em;
+    padding: 10px 28px; border-radius: 7px;
+    cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
 
-  button:active { background: rgba(255,255,255,0.1); }
-  button:disabled { opacity: 0.3; cursor: default; }
-
-  #btn-export {
-    font-size: 13px;
-    padding: 9px 24px;
-    color: rgba(255,255,255,0.6);
-    border-color: rgba(255,255,255,0.2);
-  }
-
-  #status-msg {
-    font-size: 13px;
-    color: rgba(255,255,255,0.4);
+  .done-title {
+    font-size: 13px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent);
   }
 </style>
 </head>
 <body>
 
 <div id="flash-overlay"></div>
+<canvas id="grating-canvas"></canvas>
+<div id="progress-track"><div id="progress-bar"></div></div>
+<div id="phase-label">—</div>
 
-<div id="progress-track">
-  <div id="progress-bar"></div>
-</div>
-
+<!-- ── Setup UI ── -->
 <div id="ui-setup">
-  <h1>SSVEP Stimulus</h1>
+  <div class="panel-title">Rat Visual Stimulus · 25 cm</div>
 
-  <div class="info-grid">
-    <div class="metric">
-      <div class="metric-label">Frequency</div>
-      <div class="metric-value">10 Hz</div>
+  <!-- Mode toggle -->
+  <div class="seg-control">
+    <input type="radio" name="mode" id="mode-flicker" value="flicker" checked onchange="updateMode()">
+    <label for="mode-flicker">Flicker</label>
+    <input type="radio" name="mode" id="mode-grating" value="grating" onchange="updateMode()">
+    <label for="mode-grating">Grating</label>
+  </div>
+
+  <!-- Session params -->
+  <div class="param-grid">
+    <div class="param highlight">
+      <div class="param-label">Temporal Freq</div>
+      <div class="param-value accent">5 Hz</div>
+      <div class="param-sub">peak rat CSF</div>
     </div>
-    <div class="metric">
-      <div class="metric-label">Duration</div>
-      <div class="metric-value">30 min</div>
+    <div class="param">
+      <div class="param-label">Duration</div>
+      <div class="param-value">30 min</div>
+      <div class="param-sub">10 × 1 min blocks</div>
     </div>
-    <div class="metric">
-      <div class="metric-label">Blocks</div>
-      <div class="metric-value">10 × 1 min</div>
+    <div class="param">
+      <div class="param-label">Contrast</div>
+      <div class="param-value">100%</div>
+      <div class="param-sub">Michelson</div>
     </div>
-    <div class="metric">
-      <div class="metric-label">Rest</div>
-      <div class="metric-value">1 min each</div>
+    <div class="param">
+      <div class="param-label">Rest</div>
+      <div class="param-value">1 min</div>
+      <div class="param-sub">inter-block</div>
     </div>
   </div>
 
-  <button id="btn-start" onclick="startProtocol()">Start</button>
-  <div id="status-msg">5 min baseline · 20 min stimulus · 5 min recovery</div>
+  <!-- SF controls (grating only) -->
+  <div id="sf-controls" style="width:100%;display:none;flex-direction:column;gap:10px;">
+
+    <div class="slider-row">
+      <div class="slider-header">
+        <span class="slider-label">Spatial Frequency</span>
+        <span class="slider-readout" id="sf-readout">0.20 cpd · 0.0042 c/px</span>
+      </div>
+      <input type="range" id="sf-slider"
+        min="0" max="6" step="1" value="2"
+        oninput="onSliderChange(this.value)">
+    </div>
+
+    <!-- Preset buttons -->
+    <div class="preset-row" id="preset-row">
+      <!-- filled by JS -->
+    </div>
+
+    <div class="warning" id="sf-warning">
+      Above 0.70 cpd — may exceed rat acuity. Use for threshold sweeps only.
+    </div>
+
+    <div class="param full">
+      <div class="param-label">Viewing distance</div>
+      <div class="param-value" style="font-size:14px">25 cm · iPad 5th gen (264 ppi)</div>
+      <div class="param-sub">47.6 px/deg — update PIXELS_PER_DEG if distance changes</div>
+    </div>
+  </div>
+
+  <!-- Flicker info (flicker only) -->
+  <div id="flicker-info" style="width:100%">
+    <div class="param full">
+      <div class="param-label">Stimulus</div>
+      <div class="param-value" style="font-size:14px">Full-field 5 Hz square-wave</div>
+      <div class="param-sub">Black ↔ White, time-based (no frame-count drift)</div>
+    </div>
+  </div>
+
+  <button class="btn-primary" id="btn-start" onclick="startProtocol()">Start Session</button>
 </div>
 
+<!-- ── Done UI ── -->
 <div id="ui-done">
-  <h1>Session complete</h1>
-  <button id="btn-export" onclick="exportCSV()">Export CSV</button>
+  <div class="done-title">Session complete</div>
+  <button class="btn-secondary" onclick="exportCSV()">Export CSV</button>
 </div>
 
 <script>
-const TOTAL_SEC = 30 * 60;
-const PHASE_DEFS = [
-  { name: 'Baseline', type: 'black', dur: 5 * 60 },
-  ...Array.from({ length: 10 }, (_, i) => ([
-    { name: `Block ${i + 1} ON`,  type: 'flicker', dur: 60 },
-    { name: `Block ${i + 1} OFF`, type: 'black',   dur: 60 },
-  ])).flat(),
-  { name: 'Recovery', type: 'black', dur: 5 * 60 },
+// ─────────────────────────────────────────────
+//  DISPLAY GEOMETRY
+//  iPad 5th gen: 264 ppi, 25 cm viewing distance
+//  Screen width landscape: 2048 px / 264 ppi * 2.54 cm/in = 19.69 cm
+//  Visual angle: 2 * atan(9.845/25) * (180/pi) = 43.0 deg
+//  px/deg = 2048 / 43.0 = 47.6
+// ─────────────────────────────────────────────
+const PIXELS_PER_DEG = 47.6;
+
+// ─────────────────────────────────────────────
+//  SF PRESETS  (cpd values from rat amblyopia lit)
+//  Corresponding c/px = cpd / PIXELS_PER_DEG
+// ─────────────────────────────────────────────
+const SF_PRESETS = [
+  { label: '0.05', cpd: 0.05,  note: 'suprathreshold' },
+  { label: '0.10', cpd: 0.10,  note: 'peak CSF'       },
+  { label: '0.20', cpd: 0.20,  note: 'training start' },
+  { label: '0.35', cpd: 0.35,  note: 'mid range'      },
+  { label: '0.50', cpd: 0.50,  note: 'near limit'     },
+  { label: '0.70', cpd: 0.70,  note: 'acuity ceiling' },
+  { label: '1.00', cpd: 1.00,  note: '⚠ above ceiling' },
 ];
 
-let events = [];
-let phaseIdx = 0;
+let sfIndex     = 2;     // default: 0.20 cpd
+let stimMode    = 'flicker';
+const TEMP_FREQ = 5;     // Hz — peak rat CSF temporal tuning
+
+// ─────────────────────────────────────────────
+//  PROTOCOL
+// ─────────────────────────────────────────────
+const TOTAL_SEC = 30 * 60;
+const PHASE_DEFS = [
+  { name: 'Baseline',  type: 'black',    dur: 5 * 60 },
+  ...Array.from({ length: 10 }, (_, i) => ([
+    { name: `Block ${i+1} ON`,  type: 'stimulus', dur: 60 },
+    { name: `Block ${i+1} OFF`, type: 'black',    dur: 60 },
+  ])).flat(),
+  { name: 'Recovery',  type: 'black',    dur: 5 * 60 },
+];
+
+let events         = [];
+let phaseIdx       = 0;
 let phaseStartTime = 0;
-let sessionStartTime = 0;
-let running = false;
-let animId = null;
-let flickerFrameId = null;
-let frameCount = 0;
-let flickering = false;
+let sessionStart   = 0;
+let running        = false;
+let animId         = null;
+let stimRafId      = null;
+let stimActive     = false;
+
+// WebGL state
+let gl = null, glProgram = null, glUniforms = {};
+let glInitialized = false;
 
 const overlay       = document.getElementById('flash-overlay');
+const gratingCanvas = document.getElementById('grating-canvas');
 const progressBar   = document.getElementById('progress-bar');
 const progressTrack = document.getElementById('progress-track');
+const phaseLabel    = document.getElementById('phase-label');
 const uiSetup       = document.getElementById('ui-setup');
 const uiDone        = document.getElementById('ui-done');
 
-function logEvent(type, phaseName) {
-  const elapsed = (performance.now() - sessionStartTime) / 1000;
-  events.push({ timestamp_s: elapsed.toFixed(3), event: type, phase: phaseName });
+// ─────────────────────────────────────────────
+//  UI — build presets
+// ─────────────────────────────────────────────
+(function buildPresets() {
+  const row = document.getElementById('preset-row');
+  SF_PRESETS.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn' + (i === sfIndex ? ' active' : '');
+    btn.textContent = p.label;
+    btn.title = p.note;
+    btn.onclick = () => { setPreset(i); };
+    row.appendChild(btn);
+  });
+})();
+
+function setPreset(i) {
+  sfIndex = i;
+  document.getElementById('sf-slider').value = i;
+  updateSFDisplay();
+  document.querySelectorAll('.preset-btn').forEach((b, j) => {
+    b.classList.toggle('active', j === i);
+  });
 }
 
-function stopFlicker() {
-  if (flickerFrameId) { cancelAnimationFrame(flickerFrameId); flickerFrameId = null; }
-  overlay.style.background = '#000';
-  flickering = false;
+function onSliderChange(val) {
+  sfIndex = parseInt(val);
+  updateSFDisplay();
+  document.querySelectorAll('.preset-btn').forEach((b, j) => {
+    b.classList.toggle('active', j === sfIndex);
+  });
 }
 
-function startFlicker() {
-  if (flickering) return;
-  flickering = true;
-  frameCount = 0;
-  const framesPerHalf = Math.round(60 / (10 * 2));
-  function flick() {
-    frameCount++;
-    overlay.style.background = Math.floor(frameCount / framesPerHalf) % 2 === 0 ? '#fff' : '#000';
-    flickerFrameId = requestAnimationFrame(flick);
+function updateSFDisplay() {
+  const p = SF_PRESETS[sfIndex];
+  const cpp = (p.cpd / PIXELS_PER_DEG).toFixed(4);
+  document.getElementById('sf-readout').textContent =
+    `${p.cpd.toFixed(2)} cpd · ${cpp} c/px`;
+  document.getElementById('sf-warning').classList.toggle('show', p.cpd >= 1.0);
+}
+
+function updateMode() {
+  stimMode = document.querySelector('input[name="mode"]:checked').value;
+  const sfCtrl  = document.getElementById('sf-controls');
+  const flkInfo = document.getElementById('flicker-info');
+  const isGrat  = stimMode === 'grating';
+  sfCtrl.style.display  = isGrat ? 'flex' : 'none';
+  flkInfo.style.display = isGrat ? 'none' : 'block';
+}
+
+// ─────────────────────────────────────────────
+//  WebGL grating renderer
+//  Sinusoidal grating: luminance = 0.5 + 0.5*sin(2π*f*x + 2π*T*t)
+//  where f = cycles/pixel, T = temporal freq Hz
+// ─────────────────────────────────────────────
+const VERT_SRC = `
+attribute vec2 a_pos;
+void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
+`;
+
+const FRAG_SRC = `
+precision mediump float;
+uniform float u_cpx;   // cycles per pixel
+uniform float u_phase; // 2*PI*T*t  (radians)
+uniform vec2  u_res;   // canvas resolution
+void main() {
+  float x = gl_FragCoord.x;
+  float v = 0.5 + 0.5 * sin(6.28318 * u_cpx * x + u_phase);
+  gl_FragColor = vec4(v, v, v, 1.0);
+}
+`;
+
+function initWebGL() {
+  const canvas = gratingCanvas;
+  gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) { console.warn('WebGL unavailable, falling back to 2D'); return false; }
+
+  function makeShader(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+      console.error(gl.getShaderInfoLog(s));
+    return s;
   }
-  flickerFrameId = requestAnimationFrame(flick);
+
+  glProgram = gl.createProgram();
+  gl.attachShader(glProgram, makeShader(gl.VERTEX_SHADER,   VERT_SRC));
+  gl.attachShader(glProgram, makeShader(gl.FRAGMENT_SHADER, FRAG_SRC));
+  gl.linkProgram(glProgram);
+  gl.useProgram(glProgram);
+
+  // Full-screen quad
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER,
+    new Float32Array([-1,-1, 1,-1, -1,1, 1,-1, 1,1, -1,1]),
+    gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(glProgram, 'a_pos');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  glUniforms.cpx   = gl.getUniformLocation(glProgram, 'u_cpx');
+  glUniforms.phase = gl.getUniformLocation(glProgram, 'u_phase');
+  glUniforms.res   = gl.getUniformLocation(glProgram, 'u_res');
+
+  glInitialized = true;
+  return true;
+}
+
+function sizeCanvas() {
+  gratingCanvas.width  = window.innerWidth;
+  gratingCanvas.height = window.innerHeight;
+  if (gl) gl.viewport(0, 0, gratingCanvas.width, gratingCanvas.height);
+}
+
+// ─────────────────────────────────────────────
+//  Stimulus control
+// ─────────────────────────────────────────────
+function stopStimulus() {
+  if (stimRafId) { cancelAnimationFrame(stimRafId); stimRafId = null; }
+  overlay.style.background = '#000';
+  gratingCanvas.style.display = 'none';
+  stimActive = false;
+}
+
+// Flicker — time-based, no frame-count drift
+function startFlicker() {
+  stimActive = true;
+  gratingCanvas.style.display = 'none';
+  const halfPeriod = 1000 / (TEMP_FREQ * 2); // ms per half-cycle
+  const t0 = performance.now();
+
+  function flick(now) {
+    const phase = Math.floor((now - t0) / halfPeriod) % 2;
+    overlay.style.background = phase === 0 ? '#fff' : '#000';
+    stimRafId = requestAnimationFrame(flick);
+  }
+  stimRafId = requestAnimationFrame(flick);
+}
+
+// Grating — WebGL if available, else 2D canvas fallback
+function startGrating() {
+  stimActive = true;
+  sizeCanvas();
+  gratingCanvas.style.display = 'block';
+  overlay.style.background = '#000';
+
+  const cpd = SF_PRESETS[sfIndex].cpd;
+  const cpp = cpd / PIXELS_PER_DEG;          // cycles per pixel
+  const omega = 2 * Math.PI * TEMP_FREQ;     // rad/s temporal
+  const t0 = performance.now();
+
+  if (glInitialized) {
+    // ── WebGL path ──
+    gl.useProgram(glProgram);
+    gl.uniform1f(glUniforms.cpx, cpp);
+    gl.uniform2f(glUniforms.res, gratingCanvas.width, gratingCanvas.height);
+
+    function drawGL(now) {
+      const t = (now - t0) / 1000;
+      gl.uniform1f(glUniforms.phase, omega * t);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      stimRafId = requestAnimationFrame(drawGL);
+    }
+    stimRafId = requestAnimationFrame(drawGL);
+
+  } else {
+    // ── 2D canvas fallback (pre-compute column lookup) ──
+    const ctx2 = gratingCanvas.getContext('2d');
+    const w = gratingCanvas.width, h = gratingCanvas.height;
+    // Pre-compute per-column base values (static spatial part)
+    const colVal = new Uint8Array(w);
+    const twoPiF = 2 * Math.PI * cpp;
+
+    function drawFallback(now) {
+      const t = (now - t0) / 1000;
+      const phase = omega * t;
+      const imgData = ctx2.createImageData(w, h);
+      const data = imgData.data;
+      for (let x = 0; x < w; x++) {
+        const v = Math.round(255 * (0.5 + 0.5 * Math.sin(twoPiF * x + phase)));
+        colVal[x] = v;
+      }
+      for (let y = 0; y < h; y++) {
+        const row = y * w * 4;
+        for (let x = 0; x < w; x++) {
+          const i = row + x * 4;
+          data[i] = data[i+1] = data[i+2] = colVal[x];
+          data[i+3] = 255;
+        }
+      }
+      ctx2.putImageData(imgData, 0, 0);
+      stimRafId = requestAnimationFrame(drawFallback);
+    }
+    stimRafId = requestAnimationFrame(drawFallback);
+  }
+}
+
+function startStimulus() {
+  if (stimActive) return;
+  if (stimMode === 'grating') { startGrating(); } else { startFlicker(); }
+}
+
+// ─────────────────────────────────────────────
+//  Protocol engine
+// ─────────────────────────────────────────────
+function logEvent(type, phaseName) {
+  const elapsed = ((performance.now() - sessionStart) / 1000).toFixed(3);
+  events.push({ timestamp_s: elapsed, event: type, phase: phaseName,
+                mode: stimMode, sf_cpd: SF_PRESETS[sfIndex].cpd,
+                tf_hz: TEMP_FREQ });
 }
 
 function enterPhase(idx) {
@@ -227,63 +620,85 @@ function enterPhase(idx) {
   phaseStartTime = performance.now();
   const phase = PHASE_DEFS[idx];
   logEvent('phase_start', phase.name);
-  if (phase.type === 'flicker') { startFlicker(); } else { stopFlicker(); }
+  phaseLabel.textContent = phase.name;
+  if (phase.type === 'stimulus') { startStimulus(); } else { stopStimulus(); }
 }
 
-function tick() {
+function tick(now) {
   if (!running) return;
-  const now = performance.now();
-  const totalElapsed = (now - sessionStartTime) / 1000;
+  const totalElapsed = (now - sessionStart) / 1000;
   const phaseElapsed = (now - phaseStartTime) / 1000;
-
   progressBar.style.width = `${Math.min(100, (totalElapsed / TOTAL_SEC) * 100).toFixed(3)}%`;
-
   if (phaseElapsed >= PHASE_DEFS[phaseIdx].dur) {
     logEvent('phase_end', PHASE_DEFS[phaseIdx].name);
     enterPhase(phaseIdx + 1);
   }
-
   animId = requestAnimationFrame(tick);
 }
 
 function startProtocol() {
-  sessionStartTime = performance.now();
-  running = true;
-  events = [];
+  // Init WebGL on first user gesture (required by browsers)
+  if (stimMode === 'grating' && !glInitialized) {
+    sizeCanvas();
+    initWebGL();
+  }
+
+  sessionStart = performance.now();
+  running = true; events = [];
   logEvent('session_start', 'session');
   uiSetup.style.display = 'none';
   progressTrack.style.display = 'block';
+  phaseLabel.style.display = 'block';
   enterPhase(0);
   animId = requestAnimationFrame(tick);
 }
 
 function endSession() {
   running = false;
-  stopFlicker();
+  stopStimulus();
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   logEvent('session_end', 'session');
   progressBar.style.width = '100%';
+  phaseLabel.textContent = 'Complete';
   overlay.style.background = '#000';
   uiDone.style.display = 'flex';
 }
 
+// ─────────────────────────────────────────────
+//  Export
+// ─────────────────────────────────────────────
 function exportCSV() {
-  const header = 'timestamp_s,event,phase\n';
-  const rows = events.map(e => `${e.timestamp_s},${e.event},"${e.phase}"`).join('\n');
+  const header = 'timestamp_s,event,phase,mode,sf_cpd,tf_hz\n';
+  const rows = events.map(e =>
+    `${e.timestamp_s},${e.event},"${e.phase}",${e.mode},${e.sf_cpd},${e.tf_hz}`
+  ).join('\n');
   const blob = new Blob([header + rows], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   const now = new Date();
   const stamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
-  a.download = `ssvep_events_${stamp}.csv`;
+  a.download = `rat_stim_${stamp}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && running) console.warn('Tab backgrounded — timing may drift');
+// ─────────────────────────────────────────────
+//  Misc
+// ─────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  if (stimActive && stimMode === 'grating') {
+    sizeCanvas();
+    if (gl) gl.viewport(0, 0, gratingCanvas.width, gratingCanvas.height);
+  }
 });
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && running) console.warn('Tab hidden — timing may drift');
+});
+
+// Init display
+updateSFDisplay();
 </script>
 </body>
 </html>
