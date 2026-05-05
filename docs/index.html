@@ -151,7 +151,7 @@
     margin-top: 2px;
   }
 
-  /* ── SF slider ── */
+  /* ── sliders ── */
   .slider-row {
     display: flex; flex-direction: column;
     gap: 8px; width: 100%;
@@ -184,7 +184,7 @@
     border: 2px solid var(--bg);
   }
 
-  /* ── SF presets ── */
+  /* ── preset buttons ── */
   .preset-row {
     display: flex; gap: 6px; width: 100%;
   }
@@ -259,43 +259,57 @@
 
 <!-- ── Setup UI ── -->
 <div id="ui-setup">
-  <div class="panel-title">Rat Visual Stimulus · 25 cm</div>
+  <div class="panel-title">Rat Visual Stimulus · 10 cm</div>
 
-  <!-- Mode toggle -->
+  <!-- Mode toggle — Grating is default -->
   <div class="seg-control">
-    <input type="radio" name="mode" id="mode-flicker" value="flicker" checked onchange="updateMode()">
+    <input type="radio" name="mode" id="mode-flicker" value="flicker" onchange="updateMode()">
     <label for="mode-flicker">Flicker</label>
-    <input type="radio" name="mode" id="mode-grating" value="grating" onchange="updateMode()">
+    <input type="radio" name="mode" id="mode-grating" value="grating" checked onchange="updateMode()">
     <label for="mode-grating">Grating</label>
   </div>
 
-  <!-- Session params -->
-  <div class="param-grid">
-    <div class="param highlight">
-      <div class="param-label">Temporal Freq</div>
-      <div class="param-value accent">5 Hz</div>
-      <div class="param-sub">peak rat CSF</div>
-    </div>
-    <div class="param">
-      <div class="param-label">Duration</div>
-      <div class="param-value">30 min</div>
-      <div class="param-sub">10 × 1 min blocks</div>
-    </div>
-    <div class="param">
-      <div class="param-label">Contrast</div>
-      <div class="param-value">100%</div>
-      <div class="param-sub">Michelson</div>
-    </div>
-    <div class="param">
-      <div class="param-label">Rest</div>
-      <div class="param-value">1 min</div>
-      <div class="param-sub">inter-block</div>
-    </div>
-  </div>
+  <!-- ── GRATING SECTION ── -->
+  <div id="grating-section" style="width:100%;display:flex;flex-direction:column;gap:10px;">
 
-  <!-- SF controls (grating only) -->
-  <div id="sf-controls" style="width:100%;display:none;flex-direction:column;gap:10px;">
+    <!-- Protocol overview -->
+    <div class="param-grid">
+      <div class="param highlight">
+        <div class="param-label">Temporal Freq</div>
+        <div class="param-value accent">5 Hz</div>
+        <div class="param-sub">peak rat CSF</div>
+      </div>
+      <div class="param">
+        <div class="param-label">Trial Duration</div>
+        <div class="param-value">10 s</div>
+        <div class="param-sub">per trial (b–f)</div>
+      </div>
+      <div class="param">
+        <div class="param-label">ITI</div>
+        <div class="param-value">30–60 s</div>
+        <div class="param-sub">gray, jittered</div>
+      </div>
+      <div class="param">
+        <div class="param-label">Trials</div>
+        <div class="param-value">5</div>
+        <div class="param-sub">central + 4 quadrants</div>
+      </div>
+    </div>
 
+    <!-- Dark period duration -->
+    <div class="slider-row">
+      <div class="slider-header">
+        <span class="slider-label">Dark Period</span>
+        <span class="slider-readout" id="dark-readout">5 min</span>
+      </div>
+      <div class="preset-row">
+        <button class="preset-btn" id="dark-3" onclick="setDarkDur(3)">3 min</button>
+        <button class="preset-btn" id="dark-4" onclick="setDarkDur(4)">4 min</button>
+        <button class="preset-btn active" id="dark-5" onclick="setDarkDur(5)">5 min</button>
+      </div>
+    </div>
+
+    <!-- Spatial frequency slider -->
     <div class="slider-row">
       <div class="slider-header">
         <span class="slider-label">Spatial Frequency</span>
@@ -306,10 +320,7 @@
         oninput="onSliderChange(this.value)">
     </div>
 
-    <!-- Preset buttons -->
-    <div class="preset-row" id="preset-row">
-      <!-- filled by JS -->
-    </div>
+    <div class="preset-row" id="preset-row"><!-- filled by JS --></div>
 
     <div class="warning" id="sf-warning">
       Above 0.70 cpd — may exceed rat acuity. Use for threshold sweeps only.
@@ -317,19 +328,45 @@
 
     <div class="param full">
       <div class="param-label">Viewing distance</div>
-      <div class="param-value" style="font-size:14px">25 cm · iPad 5th gen (264 ppi)</div>
-      <div class="param-sub">47.6 px/deg — update PIXELS_PER_DEG if distance changes</div>
+      <div class="param-value" style="font-size:14px">10 cm · iPad 5th gen (264 ppi)</div>
+      <div class="param-sub">23.0 px/deg — update PIXELS_PER_DEG if distance changes</div>
     </div>
-  </div>
 
-  <!-- Flicker info (flicker only) -->
-  <div id="flicker-info" style="width:100%">
+  </div><!-- /grating-section -->
+
+  <!-- ── FLICKER SECTION ── -->
+  <div id="flicker-section" style="width:100%;display:none;flex-direction:column;gap:10px;">
+
+    <div class="param-grid">
+      <div class="param highlight">
+        <div class="param-label">Temporal Freq</div>
+        <div class="param-value accent">5 Hz</div>
+        <div class="param-sub">peak rat CSF</div>
+      </div>
+      <div class="param">
+        <div class="param-label">Duration</div>
+        <div class="param-value">30 min</div>
+        <div class="param-sub">10 × 1 min blocks</div>
+      </div>
+      <div class="param">
+        <div class="param-label">Contrast</div>
+        <div class="param-value">100%</div>
+        <div class="param-sub">Michelson</div>
+      </div>
+      <div class="param">
+        <div class="param-label">Rest</div>
+        <div class="param-value">1 min</div>
+        <div class="param-sub">inter-block</div>
+      </div>
+    </div>
+
     <div class="param full">
       <div class="param-label">Stimulus</div>
       <div class="param-value" style="font-size:14px">Full-field 5 Hz square-wave</div>
       <div class="param-sub">Black ↔ White, time-based (no frame-count drift)</div>
     </div>
-  </div>
+
+  </div><!-- /flicker-section -->
 
   <button class="btn-primary" id="btn-start" onclick="startProtocol()">Start Session</button>
 </div>
@@ -343,44 +380,49 @@
 <script>
 // ─────────────────────────────────────────────
 //  DISPLAY GEOMETRY
-//  iPad 5th gen: 264 ppi, 25 cm viewing distance
+//  iPad 5th gen: 264 ppi, 10 cm viewing distance
 //  Screen width landscape: 2048 px / 264 ppi * 2.54 cm/in = 19.69 cm
-//  Visual angle: 2 * atan(9.845/25) * (180/pi) = 43.0 deg
-//  px/deg = 2048 / 43.0 = 47.6
+//  Visual angle: 2 * atan(9.845/10) * (180/pi) = 89.0 deg
+//  px/deg = 2048 / 89.0 = 23.0
 // ─────────────────────────────────────────────
-const PIXELS_PER_DEG = 47.6;
+const PIXELS_PER_DEG = 23.0;
+const TEMP_FREQ      = 5;      // Hz — peak rat CSF temporal tuning
+const TRIAL_DUR_SEC  = 10;     // seconds per trial (b–f)
 
 // ─────────────────────────────────────────────
 //  SF PRESETS  (cpd values from rat amblyopia lit)
-//  Corresponding c/px = cpd / PIXELS_PER_DEG
 // ─────────────────────────────────────────────
 const SF_PRESETS = [
-  { label: '0.05', cpd: 0.05,  note: 'suprathreshold' },
-  { label: '0.10', cpd: 0.10,  note: 'peak CSF'       },
-  { label: '0.20', cpd: 0.20,  note: 'training start' },
-  { label: '0.35', cpd: 0.35,  note: 'mid range'      },
-  { label: '0.50', cpd: 0.50,  note: 'near limit'     },
-  { label: '0.70', cpd: 0.70,  note: 'acuity ceiling' },
+  { label: '0.05', cpd: 0.05,  note: 'suprathreshold'  },
+  { label: '0.10', cpd: 0.10,  note: 'peak CSF'        },
+  { label: '0.20', cpd: 0.20,  note: 'training start'  },
+  { label: '0.35', cpd: 0.35,  note: 'mid range'       },
+  { label: '0.50', cpd: 0.50,  note: 'near limit'      },
+  { label: '0.70', cpd: 0.70,  note: 'acuity ceiling'  },
   { label: '1.00', cpd: 1.00,  note: '⚠ above ceiling' },
 ];
 
-let sfIndex     = 2;     // default: 0.20 cpd
-let stimMode    = 'flicker';
-const TEMP_FREQ = 5;     // Hz — peak rat CSF temporal tuning
-
 // ─────────────────────────────────────────────
-//  PROTOCOL
+//  GRATING APERTURE CONFIGS
+//  cx/cy: center in normalized 0-1 coords (WebGL: y=0 at bottom)
+//  hw/hh: half-width / half-height in normalized coords
+//  Large central covers 70%×70%; small quadrants fill their quarter exactly.
 // ─────────────────────────────────────────────
-const TOTAL_SEC = 30 * 60;
-const PHASE_DEFS = [
-  { name: 'Baseline',  type: 'black',    dur: 5 * 60 },
-  ...Array.from({ length: 10 }, (_, i) => ([
-    { name: `Block ${i+1} ON`,  type: 'stimulus', dur: 60 },
-    { name: `Block ${i+1} OFF`, type: 'black',    dur: 60 },
-  ])).flat(),
-  { name: 'Recovery',  type: 'black',    dur: 5 * 60 },
-];
+const GRATING_CONFIGS = {
+  'grating-large': { cx: 0.5,  cy: 0.5,  hw: 0.35, hh: 0.35 },  // central large
+  'grating-q1':    { cx: 0.25, cy: 0.75, hw: 0.25, hh: 0.25 },  // top-left
+  'grating-q2':    { cx: 0.75, cy: 0.75, hw: 0.25, hh: 0.25 },  // top-right
+  'grating-q3':    { cx: 0.25, cy: 0.25, hw: 0.25, hh: 0.25 },  // bottom-left
+  'grating-q4':    { cx: 0.75, cy: 0.25, hw: 0.25, hh: 0.25 },  // bottom-right
+};
 
+let sfIndex    = 2;          // default: 0.20 cpd
+let stimMode   = 'grating';  // grating is default
+let darkDurMin = 5;          // dark period duration in minutes
+
+// Protocol & session state
+let PHASE_DEFS     = [];
+let totalSec       = 0;
 let events         = [];
 let phaseIdx       = 0;
 let phaseStartTime = 0;
@@ -403,7 +445,7 @@ const uiSetup       = document.getElementById('ui-setup');
 const uiDone        = document.getElementById('ui-done');
 
 // ─────────────────────────────────────────────
-//  UI — build presets
+//  UI — build SF preset buttons
 // ─────────────────────────────────────────────
 (function buildPresets() {
   const row = document.getElementById('preset-row');
@@ -412,7 +454,7 @@ const uiDone        = document.getElementById('ui-done');
     btn.className = 'preset-btn' + (i === sfIndex ? ' active' : '');
     btn.textContent = p.label;
     btn.title = p.note;
-    btn.onclick = () => { setPreset(i); };
+    btn.onclick = () => setPreset(i);
     row.appendChild(btn);
   });
 })();
@@ -421,7 +463,7 @@ function setPreset(i) {
   sfIndex = i;
   document.getElementById('sf-slider').value = i;
   updateSFDisplay();
-  document.querySelectorAll('.preset-btn').forEach((b, j) => {
+  document.querySelectorAll('#preset-row .preset-btn').forEach((b, j) => {
     b.classList.toggle('active', j === i);
   });
 }
@@ -429,7 +471,7 @@ function setPreset(i) {
 function onSliderChange(val) {
   sfIndex = parseInt(val);
   updateSFDisplay();
-  document.querySelectorAll('.preset-btn').forEach((b, j) => {
+  document.querySelectorAll('#preset-row .preset-btn').forEach((b, j) => {
     b.classList.toggle('active', j === sfIndex);
   });
 }
@@ -442,19 +484,49 @@ function updateSFDisplay() {
   document.getElementById('sf-warning').classList.toggle('show', p.cpd >= 1.0);
 }
 
+function setDarkDur(min) {
+  darkDurMin = min;
+  document.getElementById('dark-readout').textContent = `${min} min`;
+  [3, 4, 5].forEach(m => {
+    document.getElementById(`dark-${m}`).classList.toggle('active', m === min);
+  });
+}
+
 function updateMode() {
   stimMode = document.querySelector('input[name="mode"]:checked').value;
-  const sfCtrl  = document.getElementById('sf-controls');
-  const flkInfo = document.getElementById('flicker-info');
-  const isGrat  = stimMode === 'grating';
-  sfCtrl.style.display  = isGrat ? 'flex' : 'none';
-  flkInfo.style.display = isGrat ? 'none' : 'block';
+  const isGrat = stimMode === 'grating';
+  document.getElementById('grating-section').style.display = isGrat ? 'flex' : 'none';
+  document.getElementById('flicker-section').style.display = isGrat ? 'none' : 'flex';
+}
+
+// ─────────────────────────────────────────────
+//  PROTOCOL BUILDER — grating
+//  Sequence: Dark (a) → [Trial + ITI] × 4 → Trial → Dark (g)
+//  ITI is randomized 30–60 s (gray screen) between each trial pair
+// ─────────────────────────────────────────────
+function randITI() { return 60; } // fixed 60 s ITI
+
+function buildGratingProtocol() {
+  const dark = darkDurMin * 60;
+  return [
+    { name: 'Dark',                        type: 'dark',          dur: dark           },
+    { name: 'Trial b · Central Large',     type: 'grating-large', dur: TRIAL_DUR_SEC  },
+    { name: 'Rest',                        type: 'gray',          dur: randITI()      },
+    { name: 'Trial c · Position 1 (TL)',   type: 'grating-q1',    dur: TRIAL_DUR_SEC  },
+    { name: 'Rest',                        type: 'gray',          dur: randITI()      },
+    { name: 'Trial d · Position 2 (TR)',   type: 'grating-q2',    dur: TRIAL_DUR_SEC  },
+    { name: 'Rest',                        type: 'gray',          dur: randITI()      },
+    { name: 'Trial e · Position 3 (BL)',   type: 'grating-q3',    dur: TRIAL_DUR_SEC  },
+    { name: 'Rest',                        type: 'gray',          dur: randITI()      },
+    { name: 'Trial f · Position 4 (BR)',   type: 'grating-q4',    dur: TRIAL_DUR_SEC  },
+    { name: 'Dark',                        type: 'dark',          dur: dark           },
+  ];
 }
 
 // ─────────────────────────────────────────────
 //  WebGL grating renderer
-//  Sinusoidal grating: luminance = 0.5 + 0.5*sin(2π*f*x + 2π*T*t)
-//  where f = cycles/pixel, T = temporal freq Hz
+//  Sinusoidal grating within a rectangular aperture; gray outside.
+//  Coords: u_center / u_halfsize in normalized 0-1 (y=0 at bottom, WebGL convention)
 // ─────────────────────────────────────────────
 const VERT_SRC = `
 attribute vec2 a_pos;
@@ -463,26 +535,31 @@ void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
 
 const FRAG_SRC = `
 precision mediump float;
-uniform float u_cpx;   // cycles per pixel
-uniform float u_phase; // 2*PI*T*t  (radians)
-uniform vec2  u_res;   // canvas resolution
+uniform float u_cpx;
+uniform float u_phase;
+uniform vec2  u_res;
+uniform vec2  u_center;
+uniform vec2  u_halfsize;
 void main() {
-  float x = gl_FragCoord.x;
-  float v = 0.5 + 0.5 * sin(6.28318 * u_cpx * x + u_phase);
-  gl_FragColor = vec4(v, v, v, 1.0);
+  vec2 uv   = gl_FragCoord.xy / u_res;
+  vec2 diff = abs(uv - u_center);
+  if (diff.x > u_halfsize.x || diff.y > u_halfsize.y) {
+    gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
+  } else {
+    float v = 0.5 + 0.5 * sin(6.28318 * u_cpx * gl_FragCoord.x + u_phase);
+    gl_FragColor = vec4(v, v, v, 1.0);
+  }
 }
 `;
 
 function initWebGL() {
-  const canvas = gratingCanvas;
-  gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  gl = gratingCanvas.getContext('webgl') || gratingCanvas.getContext('experimental-webgl');
   if (!gl) { console.warn('WebGL unavailable, falling back to 2D'); return false; }
 
   function makeShader(type, src) {
     const s = gl.createShader(type);
     gl.shaderSource(s, src); gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
-      console.error(gl.getShaderInfoLog(s));
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
     return s;
   }
 
@@ -492,19 +569,19 @@ function initWebGL() {
   gl.linkProgram(glProgram);
   gl.useProgram(glProgram);
 
-  // Full-screen quad
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER,
-    new Float32Array([-1,-1, 1,-1, -1,1, 1,-1, 1,1, -1,1]),
-    gl.STATIC_DRAW);
+    new Float32Array([-1,-1, 1,-1, -1,1, 1,-1, 1,1, -1,1]), gl.STATIC_DRAW);
   const loc = gl.getAttribLocation(glProgram, 'a_pos');
   gl.enableVertexAttribArray(loc);
   gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 
-  glUniforms.cpx   = gl.getUniformLocation(glProgram, 'u_cpx');
-  glUniforms.phase = gl.getUniformLocation(glProgram, 'u_phase');
-  glUniforms.res   = gl.getUniformLocation(glProgram, 'u_res');
+  glUniforms.cpx      = gl.getUniformLocation(glProgram, 'u_cpx');
+  glUniforms.phase    = gl.getUniformLocation(glProgram, 'u_phase');
+  glUniforms.res      = gl.getUniformLocation(glProgram, 'u_res');
+  glUniforms.center   = gl.getUniformLocation(glProgram, 'u_center');
+  glUniforms.halfsize = gl.getUniformLocation(glProgram, 'u_halfsize');
 
   glInitialized = true;
   return true;
@@ -519,18 +596,30 @@ function sizeCanvas() {
 // ─────────────────────────────────────────────
 //  Stimulus control
 // ─────────────────────────────────────────────
-function stopStimulus() {
+function stopStimRaf() {
   if (stimRafId) { cancelAnimationFrame(stimRafId); stimRafId = null; }
+}
+
+function showDark() {
+  stopStimRaf();
   overlay.style.background = '#000';
   gratingCanvas.style.display = 'none';
   stimActive = false;
 }
 
-// Flicker — time-based, no frame-count drift
+function showGray() {
+  stopStimRaf();
+  overlay.style.background = '#808080';
+  gratingCanvas.style.display = 'none';
+  stimActive = false;
+}
+
+// Flicker — time-based square-wave, no frame-count drift
 function startFlicker() {
   stimActive = true;
   gratingCanvas.style.display = 'none';
-  const halfPeriod = 1000 / (TEMP_FREQ * 2); // ms per half-cycle
+  overlay.style.background = '#000';
+  const halfPeriod = 1000 / (TEMP_FREQ * 2);
   const t0 = performance.now();
 
   function flick(now) {
@@ -541,142 +630,158 @@ function startFlicker() {
   stimRafId = requestAnimationFrame(flick);
 }
 
-// Grating — WebGL if available, else 2D canvas fallback
-function startGrating() {
+// Grating — WebGL if available, 2D canvas fallback
+function startGrating(gratingType) {
   stimActive = true;
   sizeCanvas();
   gratingCanvas.style.display = 'block';
-  overlay.style.background = '#000';
+  overlay.style.background = '#808080'; // gray behind canvas for areas outside aperture
 
-  const cpd = SF_PRESETS[sfIndex].cpd;
-  const cpp = cpd / PIXELS_PER_DEG;          // cycles per pixel
-  const omega = 2 * Math.PI * TEMP_FREQ;     // rad/s temporal
-  const t0 = performance.now();
+  const cfg   = GRATING_CONFIGS[gratingType];
+  const cpp   = SF_PRESETS[sfIndex].cpd / PIXELS_PER_DEG;
+  const omega = 2 * Math.PI * TEMP_FREQ;
+  const t0    = performance.now();
 
   if (glInitialized) {
-    // ── WebGL path ──
     gl.useProgram(glProgram);
     gl.uniform1f(glUniforms.cpx, cpp);
-    gl.uniform2f(glUniforms.res, gratingCanvas.width, gratingCanvas.height);
+    gl.uniform2f(glUniforms.res,      gratingCanvas.width, gratingCanvas.height);
+    gl.uniform2f(glUniforms.center,   cfg.cx, cfg.cy);
+    gl.uniform2f(glUniforms.halfsize, cfg.hw, cfg.hh);
 
     function drawGL(now) {
-      const t = (now - t0) / 1000;
-      gl.uniform1f(glUniforms.phase, omega * t);
+      gl.uniform1f(glUniforms.phase, omega * (now - t0) / 1000);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       stimRafId = requestAnimationFrame(drawGL);
     }
     stimRafId = requestAnimationFrame(drawGL);
 
   } else {
-    // ── 2D canvas fallback (pre-compute column lookup) ──
-    const ctx2 = gratingCanvas.getContext('2d');
+    // ── 2D canvas fallback ──
+    const ctx2  = gratingCanvas.getContext('2d');
     const w = gratingCanvas.width, h = gratingCanvas.height;
-    // Pre-compute per-column base values (static spatial part)
-    const colVal = new Uint8Array(w);
     const twoPiF = 2 * Math.PI * cpp;
 
+    // Aperture bounds in 2D canvas coords (y=0 at top, flip cy)
+    const x0 = Math.round((cfg.cx - cfg.hw) * w);
+    const x1 = Math.round((cfg.cx + cfg.hw) * w);
+    const y0 = Math.round((1 - cfg.cy - cfg.hh) * h);
+    const y1 = Math.round((1 - cfg.cy + cfg.hh) * h);
+    const aw = x1 - x0, ah = y1 - y0;
+
     function drawFallback(now) {
-      const t = (now - t0) / 1000;
-      const phase = omega * t;
-      const imgData = ctx2.createImageData(w, h);
-      const data = imgData.data;
-      for (let x = 0; x < w; x++) {
-        const v = Math.round(255 * (0.5 + 0.5 * Math.sin(twoPiF * x + phase)));
-        colVal[x] = v;
-      }
-      for (let y = 0; y < h; y++) {
-        const row = y * w * 4;
-        for (let x = 0; x < w; x++) {
-          const i = row + x * 4;
-          data[i] = data[i+1] = data[i+2] = colVal[x];
+      const phase = omega * (now - t0) / 1000;
+
+      ctx2.fillStyle = '#808080';
+      ctx2.fillRect(0, 0, w, h);
+
+      const imgData = ctx2.createImageData(aw, ah);
+      const data    = imgData.data;
+      for (let py = 0; py < ah; py++) {
+        for (let px = 0; px < aw; px++) {
+          const v = Math.round(255 * (0.5 + 0.5 * Math.sin(twoPiF * (x0 + px) + phase)));
+          const i = (py * aw + px) * 4;
+          data[i] = data[i+1] = data[i+2] = v;
           data[i+3] = 255;
         }
       }
-      ctx2.putImageData(imgData, 0, 0);
+      ctx2.putImageData(imgData, x0, y0);
       stimRafId = requestAnimationFrame(drawFallback);
     }
     stimRafId = requestAnimationFrame(drawFallback);
   }
 }
 
-function startStimulus() {
-  if (stimActive) return;
-  if (stimMode === 'grating') { startGrating(); } else { startFlicker(); }
-}
-
 // ─────────────────────────────────────────────
 //  Protocol engine
 // ─────────────────────────────────────────────
-function logEvent(type, phaseName) {
+function logEvent(type, phaseName, extra) {
   const elapsed = ((performance.now() - sessionStart) / 1000).toFixed(3);
   events.push({ timestamp_s: elapsed, event: type, phase: phaseName,
                 mode: stimMode, sf_cpd: SF_PRESETS[sfIndex].cpd,
-                tf_hz: TEMP_FREQ });
+                tf_hz: TEMP_FREQ, ...extra });
 }
 
 function enterPhase(idx) {
   if (idx >= PHASE_DEFS.length) { endSession(); return; }
-  phaseIdx = idx;
+  phaseIdx       = idx;
   phaseStartTime = performance.now();
-  const phase = PHASE_DEFS[idx];
-  logEvent('phase_start', phase.name);
+  const phase    = PHASE_DEFS[idx];
+
+  logEvent('phase_start', phase.name, { phase_type: phase.type, dur_s: phase.dur });
   phaseLabel.textContent = phase.name;
-  if (phase.type === 'stimulus') { startStimulus(); } else { stopStimulus(); }
+
+  if      (phase.type === 'dark')    { showDark(); }
+  else if (phase.type === 'gray')    { showGray(); }
+  else if (phase.type === 'flicker') { startFlicker(); }
+  else                               { startGrating(phase.type); }
 }
 
 function tick(now) {
   if (!running) return;
   const totalElapsed = (now - sessionStart) / 1000;
   const phaseElapsed = (now - phaseStartTime) / 1000;
-  progressBar.style.width = `${Math.min(100, (totalElapsed / TOTAL_SEC) * 100).toFixed(3)}%`;
+  progressBar.style.width = `${Math.min(100, (totalElapsed / totalSec) * 100).toFixed(3)}%`;
   if (phaseElapsed >= PHASE_DEFS[phaseIdx].dur) {
-    logEvent('phase_end', PHASE_DEFS[phaseIdx].name);
+    logEvent('phase_end', PHASE_DEFS[phaseIdx].name, { phase_type: PHASE_DEFS[phaseIdx].type });
     enterPhase(phaseIdx + 1);
   }
   animId = requestAnimationFrame(tick);
 }
 
 function startProtocol() {
-  // Init WebGL on first user gesture (required by browsers)
-  if (stimMode === 'grating' && !glInitialized) {
+  if (stimMode === 'grating') {
     sizeCanvas();
-    initWebGL();
+    if (!glInitialized) initWebGL();
+    PHASE_DEFS = buildGratingProtocol();
+  } else {
+    // Flicker: original 10-block protocol
+    PHASE_DEFS = [
+      { name: 'Baseline',  type: 'dark',    dur: 5 * 60 },
+      ...Array.from({ length: 10 }, (_, i) => ([
+        { name: `Block ${i+1} ON`,  type: 'flicker', dur: 60 },
+        { name: `Block ${i+1} OFF`, type: 'dark',    dur: 60 },
+      ])).flat(),
+      { name: 'Recovery',  type: 'dark',    dur: 5 * 60 },
+    ];
   }
 
+  totalSec     = PHASE_DEFS.reduce((s, p) => s + p.dur, 0);
   sessionStart = performance.now();
-  running = true; events = [];
-  logEvent('session_start', 'session');
-  uiSetup.style.display = 'none';
+  running      = true;
+  events       = [];
+
+  logEvent('session_start', 'session', {});
+  uiSetup.style.display       = 'none';
   progressTrack.style.display = 'block';
-  phaseLabel.style.display = 'block';
+  phaseLabel.style.display    = 'block';
   enterPhase(0);
   animId = requestAnimationFrame(tick);
 }
 
 function endSession() {
   running = false;
-  stopStimulus();
+  showDark();
   if (animId) { cancelAnimationFrame(animId); animId = null; }
-  logEvent('session_end', 'session');
-  progressBar.style.width = '100%';
-  phaseLabel.textContent = 'Complete';
-  overlay.style.background = '#000';
-  uiDone.style.display = 'flex';
+  logEvent('session_end', 'session', {});
+  progressBar.style.width  = '100%';
+  phaseLabel.textContent   = 'Complete';
+  uiDone.style.display     = 'flex';
 }
 
 // ─────────────────────────────────────────────
 //  Export
 // ─────────────────────────────────────────────
 function exportCSV() {
-  const header = 'timestamp_s,event,phase,mode,sf_cpd,tf_hz\n';
+  const header = 'timestamp_s,event,phase,phase_type,mode,sf_cpd,tf_hz\n';
   const rows = events.map(e =>
-    `${e.timestamp_s},${e.event},"${e.phase}",${e.mode},${e.sf_cpd},${e.tf_hz}`
+    `${e.timestamp_s},${e.event},"${e.phase}",${e.phase_type || ''},${e.mode},${e.sf_cpd},${e.tf_hz}`
   ).join('\n');
   const blob = new Blob([header + rows], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const now = new Date();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  const now  = new Date();
   const stamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
   a.download = `rat_stim_${stamp}.csv`;
   a.click();
@@ -687,7 +792,7 @@ function exportCSV() {
 //  Misc
 // ─────────────────────────────────────────────
 window.addEventListener('resize', () => {
-  if (stimActive && stimMode === 'grating') {
+  if (stimActive && stimRafId) {
     sizeCanvas();
     if (gl) gl.viewport(0, 0, gratingCanvas.width, gratingCanvas.height);
   }
